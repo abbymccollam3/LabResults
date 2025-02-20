@@ -1,0 +1,29 @@
+bloodwork-dashboard/
+├── .vscode/
+│   └── settings.json
+├── backend/
+│   ├── venv/
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py
+│   │   ├── models.py
+│   │   └── routes/
+│   │       ├── __init__.py
+│   │       ├── bloodwork.py
+│   │       └── concerns.py
+│   ├── requirements.txt
+│   └── .env
+└── frontend/
+    ├── src/
+    │   ├── components/
+    │   │   ├── Navbar.jsx
+    │   │   ├── BloodworkCard.jsx
+    │   │   └── VoiceButton.jsx
+    │   ├── pages/
+    │   │   ├── BloodworkDashboard.jsx
+    │   │   └── Concerns.jsx
+    │   ├── App.jsx
+    │   ├── index.jsx
+    │   └── index.css
+    ├── package.json
+    └── index.html 
