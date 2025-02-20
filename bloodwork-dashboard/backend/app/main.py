@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
+from app.routes import bloodwork
 
 load_dotenv()
 
@@ -28,5 +29,4 @@ supabase: Client = create_client(
 #     print(f"Key: {os.getenv("SUPABASE_KEY")}")
 
 # Include routers
-from app.routes import bloodwork
-app.include_router(bloodwork.router) 
+app.include_router(bloodwork.router, prefix="/bloodwork", tags=["bloodwork"]) 

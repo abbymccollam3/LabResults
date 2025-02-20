@@ -1,19 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { fetchBloodwork } from '../services/api';
 
 function AllResults() {
-  const metrics = [
-    { id: 1, name: 'Sodium (Na)', value: '140', unit: 'mEq/L', status: 'normal' },
-    { id: 2, name: 'Potassium (K)', value: '4.0', unit: 'mEq/L', status: 'normal' },
-    { id: 3, name: 'Chloride (Cl)', value: '102', unit: 'mEq/L', status: 'normal' },
-    { id: 4, name: 'Bicarbonate (CO2)', value: '24', unit: 'mEq/L', status: 'normal' },
-    { id: 5, name: 'Blood Urea Nitrogen (BUN)', value: '15', unit: 'mg/dL', status: 'normal' },
-    { id: 6, name: 'Creatinine', value: '0.9', unit: 'mg/dL', status: 'normal' },
-    { id: 7, name: 'Glucose', value: '95', unit: 'mg/dL', status: 'normal' },
-    { id: 8, name: 'Calcium', value: '9.5', unit: 'mg/dL', status: 'normal' },
-    { id: 9, name: 'Total Protein', value: '7.0', unit: 'g/dL', status: 'normal' },
-    { id: 10, name: 'Albumin', value: '4.0', unit: 'g/dL', status: 'normal' },
-    { id: 11, name: 'Total Bilirubin', value: '1.0', unit: 'mg/dL', status: 'normal' },
-  ];
+  const [metrics, setMetrics] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const loadBloodwork = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchBloodwork('example-patient-id');
+        setMetrics(data);
+      } catch (err) {
+        setError('Failed to load bloodwork data');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBloodwork();
+  }, []);
+
+  if (loading) return <div className="p-4">Loading...</div>;
+  if (error) return <div className="p-4 text-red-600">{error}</div>;
 
   return (
     <div className="p-4">
