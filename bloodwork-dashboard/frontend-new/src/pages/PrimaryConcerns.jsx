@@ -89,11 +89,11 @@ function PrimaryConcerns() {
         {concerns && concerns.length > 0 ? (
           concerns.map((concern) => (
             <div
-              key={concern.name}
+              key={concern.metric_name}
               className="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-800 relative"
             >
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">{concern.name}</h3>
+                <h3 className="text-lg font-semibold text-gray-800">{concern.metric_name}</h3>
                 <div className="flex items-center">
                   <div className="text-xl font-bold text-blue-800 mr-2">
                     {concern.value}
