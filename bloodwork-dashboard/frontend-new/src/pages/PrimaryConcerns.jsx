@@ -1,5 +1,4 @@
 import React from 'react';
-import VoiceButton from '../components/VoiceButton';
 
 function PrimaryConcerns() {
   const concerns = [
@@ -42,11 +41,11 @@ function PrimaryConcerns() {
         {concerns.map(concern => (
           <div 
             key={concern.id} 
-            className="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500 relative"
+            className="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500"
           >
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-xl font-semibold text-gray-800">{concern.name}</h3>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center">
                 <div className="text-2xl font-bold text-red-600 mr-2">
                   {concern.value}
                   <span className="text-sm text-gray-500 ml-1">{concern.unit}</span>
@@ -54,7 +53,6 @@ function PrimaryConcerns() {
                 <span className="px-2 py-1 rounded bg-red-100 text-red-800 text-sm">
                   {concern.status}
                 </span>
-                <VoiceButton metricId={concern.id} />
               </div>
             </div>
             <div className="space-y-2 text-gray-600">
