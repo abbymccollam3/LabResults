@@ -26,6 +26,8 @@ async def get_primary_concerns():
             .execute()
         )
 
+        print("Response from Supabase:", response)
+
         if not response.data:
             raise HTTPException(status_code=404, detail="No primary concerns found.")
 
