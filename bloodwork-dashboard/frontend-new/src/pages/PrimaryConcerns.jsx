@@ -1,29 +1,28 @@
 import React, { useState, useEffect } from 'react';
 
 function PrimaryConcerns() {
-  const [concerns, setConcerns] = useState([]);  // Initialize state to store concerns
-  const [loading, setLoading] = useState(true); // For handling loading state
+  const [concerns, setConcerns] = useState([]);  // State to hold fetched concerns
+  const [loading, setLoading] = useState(true);  // For handling loading state
 
   // Fetch the primary concerns from the API when the component mounts
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/primary-concerns") // Backend URL
+    fetch("http://127.0.0.1:8000/bloodwork/primary-concerns") // Backend URL
       .then((response) => response.json()) // Parse response JSON
       .then((data) => {
-        console.log("Fetched concerns:", data);  // Log the fetched data for debugging
+        console.log("Fetched concerns:", data);  // Log the fetched data
 
-        // Check if data is an array before setting it
+        // Ensure data is an array before setting
         if (Array.isArray(data)) {
-          setConcerns(data); // Set the data if it's an array
+          setConcerns(data);  // Set the concerns if the data is an array
         } else {
-          console.error("Data is not an array:", data);  // Log error if data is not an array
-          setConcerns([]);  // Set an empty array if data is not valid
+          console.error("Expected an array but got:", data);
+          setConcerns([]);  // Set empty array if the response format is unexpected
         }
-
-        setLoading(false); // Set loading state to false after data is fetched
+        setLoading(false);  // Set loading state to false after data is fetched
       })
       .catch((error) => {
-        console.error("Error fetching concerns:", error); // Handle errors
-        setLoading(false); // Ensure loading state is false on error
+        console.error("Error fetching concerns:", error);  // Handle errors
+        setLoading(false);  // Ensure loading state is false on error
       });
   }, []); // Empty dependency array ensures this runs only once when component mounts
 
@@ -43,11 +42,11 @@ function PrimaryConcerns() {
     <div className="p-4">
       <h2 className="text-2xl font-bold mb-6">Primary Concerns</h2>
       <div className="space-y-4">
-        {/* Loop through the fetched concerns data */}
-        {concerns.length > 0 ? (
+        {/* Check if concerns is an array before mapping */}
+        {concerns && concerns.length > 0 ? (
           concerns.map((concern) => (
             <div
-              key={concern.id} // Use id as the key for each concern
+              key={concern.name} // Use name as the key (or id if available)
               className="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500 relative"
             >
               <div className="flex justify-between items-start mb-4">
