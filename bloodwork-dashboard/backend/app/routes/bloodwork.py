@@ -19,8 +19,28 @@ async def get_ping():
 @router.post("/add-bloodwork")
 async def add_bloodwork(data: List[Dict], background_tasks: BackgroundTasks):  # Expecting an array of records
     try:
-        # Insert bloodwork data into Supabase (bulk insert)
-        bloodwork = supabase_client.table("bloodwork").insert(data).execute()
+        bloodwork_data = []
+        
+        for record in data:
+            # Retrieve metric_id from metrics table using the metric_name
+            metric_name = record["metric_name"]
+            metric = supabase_client.table("metrics").select("metric_id").eq("metric_name", metric_name).execute()
+
+            if not metric.data:
+                raise HTTPException(status_code=404, detail=f"Metric '{metric_name}' not found")
+
+            metric_id = metric.data[0]["metric_id"]
+
+            # Prepare the bloodwork record with the corresponding metric_id
+            bloodwork_data.append({
+                "metric_id": metric_id,
+                "patient_id": record["patient_id"],  # Assuming patient_id is passed in the record
+                "value": record["value"],
+                "status": record["status"]
+            })
+
+        # Insert all bloodwork records into the database
+        bloodwork = supabase_client.table("bloodwork").insert(bloodwork_data).execute()
 
         if not bloodwork.data:
             raise HTTPException(status_code=500, detail="Failed to insert bloodwork data")
@@ -37,23 +57,37 @@ async def add_bloodwork(data: List[Dict], background_tasks: BackgroundTasks):  #
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
 @router.get("/primary-concerns")
 async def get_primary_concerns():
     try:
-        # Fetch the lab results with concerns (assuming `status != "normal"`)
-        response = (
-            supabase_client.table("bloodwork")
-            .select("name", "value", "unit", "status", "audio_url")  # Include audio_url
-            .neq("status", "normal")  # Only concerned results (e.g., abnormal status)
-            .execute()
-        )
+        # Fetch the metrics data (metric_id, metric_name, unit)
+        metrics_response = supabase_client.table("metrics").select("metric_id, metric_name, unit").execute()
 
-        print("Response from Supabase:", response)
+        if not metrics_response.data:
+            raise HTTPException(status_code=404, detail="No metrics found")
+        
+        # Fetch the bloodwork data (metric_id, value, status, audio_url)
+        bloodwork_response = supabase_client.table("bloodwork").select("metric_id, value, status, audio_url").neq("status", "normal").execute()
 
-        if not response.data:
-            raise HTTPException(status_code=404, detail="No primary concerns found.")
-
-        return response.data  # Return all the lab results with the audio_url
+        if not bloodwork_response.data:
+            raise HTTPException(status_code=404, detail="No primary concerns found")
+        
+        # Combine the data by matching metric_id from both responses
+        combined_data = []
+        for bloodwork in bloodwork_response.data:
+            # Find the matching metric for each bloodwork entry
+            matching_metric = next((metric for metric in metrics_response.data if metric["metric_id"] == bloodwork["metric_id"]), None)
+            if matching_metric:
+                combined_data.append({
+                    "metric_name": matching_metric["metric_name"],
+                    "value": bloodwork["value"],
+                    "status": bloodwork["status"],
+                    "audio_url": bloodwork["audio_url"],
+                    "unit": matching_metric["unit"]
+                })
+        
+        return combined_data
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -62,21 +96,39 @@ async def get_primary_concerns():
 @router.get("/all")  # New route for all metrics
 async def get_all_bloodwork():
     try:
-        response = (
-            supabase_client.table("bloodwork")
-            .select("name", "value", "unit", "status", "audio_url")
-            .execute()
-        )
+        # Fetch all metrics from the metrics table
+        metrics_response = supabase_client.table("metrics").select("metric_id, metric_name, unit").execute()
 
-        if not response.data:
+        if not metrics_response.data:
+            raise HTTPException(status_code=404, detail="No metrics found")
+        
+        # Fetch all bloodwork records, including their metric_ids
+        bloodwork_response = supabase_client.table("bloodwork").select("metric_id, value, status, audio_url").execute()
+
+        if not bloodwork_response.data:
             raise HTTPException(status_code=404, detail="No bloodwork data found")
         
-        return response.data
+        # Combine the data from both responses
+        combined_data = []
+        for bloodwork in bloodwork_response.data:
+            # Find the matching metric for each bloodwork entry
+            matching_metric = next((metric for metric in metrics_response.data if metric["metric_id"] == bloodwork["metric_id"]), None)
+            if matching_metric:
+                combined_data.append({
+                    "metric_name": matching_metric["metric_name"],
+                    "value": bloodwork["value"],
+                    "status": bloodwork["status"],
+                    "audio_url": bloodwork["audio_url"],
+                    "unit": matching_metric["unit"]
+                })
+        
+        return combined_data
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/generate-voice/{metric_id}") 
+
+@router.post("/generate-voice/{metric_id}")
 async def generate_voice_explanation(metric_id: int, background_tasks: BackgroundTasks):
     background_tasks.add_task(process_voice_generation, metric_id)
     return {"message": "Voice generation started in the background."}
@@ -84,32 +136,35 @@ async def generate_voice_explanation(metric_id: int, background_tasks: Backgroun
 
 async def process_voice_generation(metric_id: int):
     try:
-        metric = supabase_client.table("bloodwork").select("*").eq("metric_id", metric_id).execute()
+        # Fetch metric details (name, unit, normal_range) from the metrics table
+        metric = supabase_client.table("metrics").select("metric_name", "unit", "normal_range").eq("metric_id", metric_id).execute()
 
-        # Check if the query returned no results
         if not metric.data:
             raise HTTPException(status_code=404, detail="Metric not found")
-            return
-
-        # If multiple rows are returned (which shouldn't happen if IDs are unique)
-        if len(metric.data) > 1:
-            raise HTTPException(status_code=400, detail="Multiple rows found for the same metric ID")
-
-        # Now you can access the single metric data
-        metric_data = metric.data[0]  # First row (since there is only one result)
         
-        # Generate explanation text
-        explanation_prompt = f"Your {metric_data['name']} level is {metric_data['value']} {metric_data['unit']}. "
-        if metric_data['status'] == 'normal':
+        metric_data = metric.data[0]  # Access the metric data (name, unit, normal_range)
+        
+        # Fetch the latest bloodwork record for the given metric_id
+        bloodwork = supabase_client.table("bloodwork").select("value", "status").eq("metric_id", metric_id).order("timestamp", desc=True).limit(1).execute()
+
+        print("Fetching bloodwork.")
+        if not bloodwork.data:
+            raise HTTPException(status_code=404, detail="Bloodwork data not found")
+        
+        record_data = bloodwork.data[0]  # Get the most recent bloodwork record
+
+        # Prepare the explanation text
+        explanation_prompt = f"Your {metric_data['metric_name']} level is {record_data['value']} {metric_data['unit']}. "
+        if record_data['status'] == 'normal':
             explanation_prompt += "This is within the normal range."
         else:
             explanation_prompt += f"""
-            Can you explain what the {metric_data['name']} level represents, and why it's important to monitor it? 
-            The current value is {metric_data['value']} {metric_data['unit']}; can you provide actionable recommendations for the 
+            Can you explain what the {metric_data['metric_name']} level represents, and why it's important to monitor it? 
+            The current value is {record_data['value']} {metric_data['unit']}; can you provide actionable recommendations for the 
             user on how to address the issue? For instance, if the value is high, what could be the potential causes, and what 
             steps should the user take to correct it? If the value is low, what actions should the user consider to improve it?
             """
-        
+
         # Generate voice using ElevenLabs
         audio = generate(
             text=explanation_prompt,
@@ -123,9 +178,12 @@ async def process_voice_generation(metric_id: int):
         save(audio, filename)
 
         # Upload the audio file to Supabase storage
-        bucket_name = "audio-files"  # Replace with your bucket name
-        file_path = f"{metric_id}/{filename}"  # File path inside the bucket
-        
+        bucket_name = "audio-files"
+        file_path = f"{metric_id}/{filename}"
+
+        print("Removing")
+        supabase_client.storage.from_(bucket_name).remove([file_path])
+
         # Upload the file
         file = supabase_client.storage.from_(bucket_name).upload(file_path, filename)
 
@@ -136,18 +194,91 @@ async def process_voice_generation(metric_id: int):
             # Delete the local file after uploading it to Supabase
             os.remove(filename)
 
-            # Now update the bloodwork record with the new audio_url
-            supabase_client.table("bloodwork").update({"audio_url": audio_url}).eq("metric_id", metric_id).execute()
+            # Update the bloodwork record with the new audio_url
+            updated_record = supabase_client.table("bloodwork").update({"audio_url": audio_url}).eq("metric_id", metric_id).execute()
+            print(f"Record: {updated_record}")
+
+            if not updated_record.data:
+                raise HTTPException(status_code=500, detail="Failed to update the audio URL in the database")
 
             print("Successful upload")
-            # Return the audio URL
             return {"audio_url": audio_url}
     
         else:
-            print(f"Failed to update the audio URL with {metric_id} in the database")
+            raise HTTPException(status_code=500, detail="Failed to upload audio to Supabase storage")
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+# async def process_voice_generation(metric_id: int):
+#     try:
+#         metric = supabase_client.table("bloodwork").select("*").eq("metric_id", metric_id).execute()
+
+#         # Check if the query returned no results
+#         if not metric.data:
+#             raise HTTPException(status_code=404, detail="Metric not found")
+#             return
+
+#         # If multiple rows are returned (which shouldn't happen if IDs are unique)
+#         if len(metric.data) > 1:
+#             raise HTTPException(status_code=400, detail="Multiple rows found for the same metric ID")
+
+#         # Now you can access the single metric data
+#         metric_data = metric.data[0]  # First row (since there is only one result)
+        
+#         # Generate explanation text
+#         explanation_prompt = f"Your {metric_data['name']} level is {metric_data['value']} {metric_data['unit']}. "
+#         if metric_data['status'] == 'normal':
+#             explanation_prompt += "This is within the normal range."
+#         else:
+#             explanation_prompt += f"""
+#             Can you explain what the {metric_data['name']} level represents, and why it's important to monitor it? 
+#             The current value is {metric_data['value']} {metric_data['unit']}; can you provide actionable recommendations for the 
+#             user on how to address the issue? For instance, if the value is high, what could be the potential causes, and what 
+#             steps should the user take to correct it? If the value is low, what actions should the user consider to improve it?
+#             """
+        
+#         # Generate voice using ElevenLabs
+#         audio = generate(
+#             text=explanation_prompt,
+#             voice="Josh",
+#             model="eleven_monolingual_v1",
+#             api_key=ELEVEN_LABS_API_KEY
+#         )
+
+#         # Save the audio file temporarily to a local directory
+#         filename = f"temp_{metric_id}.mp3"
+#         save(audio, filename)
+
+#         # Upload the audio file to Supabase storage
+#         bucket_name = "audio-files"  # Replace with your bucket name
+#         file_path = f"{metric_id}/{filename}"  # File path inside the bucket
+        
+#         # Upload the file
+#         file = supabase_client.storage.from_(bucket_name).upload(file_path, filename)
+
+#         if file:
+#             # Generate a public URL to access the audio
+#             audio_url = supabase_client.storage.from_(bucket_name).get_public_url(file_path)
+        
+#             # Delete the local file after uploading it to Supabase
+#             os.remove(filename)
+
+#             # Now update the bloodwork record with the new audio_url
+#             supabase_client.table("bloodwork").update({"audio_url": audio_url}).eq("metric_id", metric_id).execute()
+
+#             print("Successful upload")
+#             # Return the audio URL
+#             return {"audio_url": audio_url}
+    
+#         else:
+#             print(f"Failed to update the audio URL with {metric_id} in the database")
+
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 
 
