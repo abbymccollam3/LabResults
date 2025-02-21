@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from elevenlabs import generate, save
 import os
-from app.clients import supabase_client
+from app.clients import supabase_client, openai_client
 from typing import List, Dict
 from dotenv import load_dotenv
 import os
+# import openai
 
 load_dotenv()
 ELEVEN_LABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
@@ -147,27 +148,59 @@ async def process_voice_generation(metric_id: int):
         # Fetch the latest bloodwork record for the given metric_id
         bloodwork = supabase_client.table("bloodwork").select("value", "status").eq("metric_id", metric_id).order("timestamp", desc=True).limit(1).execute()
 
-        print("Fetching bloodwork.")
         if not bloodwork.data:
             raise HTTPException(status_code=404, detail="Bloodwork data not found")
         
         record_data = bloodwork.data[0]  # Get the most recent bloodwork record
 
         # Prepare the explanation text
-        explanation_prompt = f"Your {metric_data['metric_name']} level is {record_data['value']} {metric_data['unit']}. "
+        #explanation_prompt = f"Your {metric_data['metric_name']} level is {record_data['value']} {metric_data['unit']}. "
         if record_data['status'] == 'normal':
-            explanation_prompt += "This is within the normal range."
+            explanation_prompt = "This is within the normal range."
         else:
-            explanation_prompt += f"""
-            Can you explain what the {metric_data['metric_name']} level represents, and why it's important to monitor it? 
-            The current value is {record_data['value']} {metric_data['unit']}; can you provide actionable recommendations for the 
-            user on how to address the issue? For instance, if the value is high, what could be the potential causes, and what 
-            steps should the user take to correct it? If the value is low, what actions should the user consider to improve it?
+            explanation_prompt = f"""
+            You are an expert in health metrics. Please explain the following:
+
+            Metric: {metric_data['metric_name']}
+            Current Level: {record_data['value']} {metric_data['unit']}
+            Status: {record_data['status']}
+
+            Provide the following details:
+            1. Simply, what does this metric mean?
+            2. Why is it important to monitor this metric?
+            3. What are some actionable recommendations to get the current level to a normal level?
+               For example, if there was a high glucose status, you should advise the patient to
+               eat more fiber and exercise regularly. Remember to keep this concise though.
+
+            This is being fed to 11 Labs, which is a text to speech so it is reading everything verbatim.
+            Respond in a clear and concise manner and include only text; there should be no numbers or
+            special characters and the text to speech generator should be able to read your response easily.
             """
+
+        completion = openai_client.chat.completions.create(
+            model = "gpt-4o",
+            messages = [
+                {
+                    "role": "developer", 
+                    "content": "You are a helpful assistant." 
+                },
+                {
+                    "role": "user",
+                    "content": explanation_prompt
+                }
+            ]
+        )
+        
+        # Get the generated text from OpenAI response
+        generated_text = completion.choices[0].message.content.strip()
+
+        # Print to check if the generated_text is a string
+        print("Generated text:", generated_text)
+        print("Type of generated_text:", type(generated_text))
 
         # Generate voice using ElevenLabs
         audio = generate(
-            text=explanation_prompt,
+            text=generated_text,
             voice="Josh",
             model="eleven_monolingual_v1",
             api_key=ELEVEN_LABS_API_KEY
@@ -305,3 +338,6 @@ async def process_voice_generation(metric_id: int):
 
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    print(f"Eleven API: {ELEVEN_LABS_API_KEY}")
