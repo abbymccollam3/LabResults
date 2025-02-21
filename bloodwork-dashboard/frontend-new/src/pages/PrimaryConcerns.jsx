@@ -5,27 +5,27 @@ function PrimaryConcerns() {
   const [concerns, setConcerns] = useState([]);  // State to hold fetched concerns
   const [loading, setLoading] = useState(true);  // For handling loading state
 
-  // Fetch the primary concerns from the API when the component mounts
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/bloodwork/primary-concerns") // Backend URL
-      .then((response) => response.json()) // Parse response JSON
+    fetch("http://127.0.0.1:8000/bloodwork/primary-concerns") // Fetch pre-generated data
+      .then((response) => response.json())
       .then((data) => {
-        console.log("Fetched concerns:", data);  // Log the fetched data
-
-        // Ensure data is an array before setting
+        console.log("Fetched concerns:", data); // Debugging: Log response to check `audio_url`
+  
+        // Ensure the response is an array before setting state
         if (Array.isArray(data)) {
-          setConcerns(data);  // Set the concerns if the data is an array
+          setConcerns(data); // Store data in state
         } else {
           console.error("Expected an array but got:", data);
-          setConcerns([]);  // Set empty array if the response format is unexpected
+          setConcerns([]); // Prevent breaking the UI if format is incorrect
         }
-        setLoading(false);  // Set loading state to false after data is fetched
+        
+        setLoading(false); // Mark data as loaded
       })
       .catch((error) => {
-        console.error("Error fetching concerns:", error);  // Handle errors
-        setLoading(false);  // Ensure loading state is false on error
+        console.error("❌ Error fetching concerns:", error);
+        setLoading(false);
       });
-  }, []); // Empty dependency array ensures this runs only once when component mounts
+  }, []); // Runs only when the component mounts
 
   // Log the state to ensure it's set correctly
   console.log("Concerns state:", concerns);
@@ -34,10 +34,17 @@ function PrimaryConcerns() {
     return <div>Loading...</div>; // Display loading message while fetching data
   }
 
-  const handleAudioPlay = (audioUrl) => {
-    const audio = new Audio(audioUrl);  // Create a new audio object
-    audio.play();  // Play the audio
+  const playAudio = (audioUrl) => {
+    if (!audioUrl) {
+      console.warn("No audio available."); // Prevent errors if URL is missing
+      return;
+    }
+  
+    const audio = new Audio(audioUrl);
+    audio.play()
+      .catch((err) => console.error("Audio play error:", err)); // Handle playback errors
   };
+  
 
   return (
     <div className="p-4">
@@ -69,7 +76,7 @@ function PrimaryConcerns() {
               {concern.audio_url && (
                 <button
                   title="Play Audio Explanation"
-                  onClick={() => handleAudioPlay(concern.audio_url)}
+                  onClick={() => playAudio(concern.audio_url)}
                   className="absolute bottom-4 right-4 p-2 text-gray-600 hover:text-blue-600 transition-colors"
                 >
                   <SpeakerWaveIcon className="h-6 w-6" />
