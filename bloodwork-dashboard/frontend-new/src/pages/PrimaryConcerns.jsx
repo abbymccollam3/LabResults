@@ -44,7 +44,22 @@ function PrimaryConcerns() {
     audio.play()
       .catch((err) => console.error("Audio play error:", err)); // Handle playback errors
   };
-  
+
+  const highlightStatus = (status) => {
+    // Highlight "high" and "low" statuses in red
+    if (status === 'high' || status === 'low') {
+      return (
+        <span className="px-2 py-1 rounded text-sm bg-red-200 text-red-600 font-bold">
+          {status}
+        </span>
+      );
+    }
+    return (
+      <span className="px-2 py-1 rounded text-sm text-green-800">
+        {status}
+      </span>
+    );
+  };
 
   return (
     <div className="p-4">
@@ -63,9 +78,7 @@ function PrimaryConcerns() {
                     {concern.value}
                     <span className="text-sm text-gray-500 ml-1">{concern.unit}</span>
                   </div>
-                  <span className="px-2 py-1 rounded bg-blue-100 text-blue-800 text-sm">
-                    {concern.status}
-                  </span>
+                  {highlightStatus(concern.status)} {/* Apply the highlight function */}
                 </div>
               </div>
               <div className="space-y-1 text-sm text-gray-600">

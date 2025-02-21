@@ -166,11 +166,13 @@ async def process_voice_generation(metric_id: int):
             Status: {record_data['status']}
 
             Provide the following details:
-            1. Simply, what does this metric mean?
+            1. Give a 1 sentence overview of the lab results. For example:
+                Your {metric_data['metric_name']} level is too {record_data['status']}.
+            2. Simply, in 1 sentence or less, what does this metric mean?
             2. Why is it important to monitor this metric?
             3. What are some actionable recommendations to get the current level to a normal level?
                For example, if there was a high glucose status, you should advise the patient to
-               eat more fiber and exercise regularly. Remember to keep this concise though.
+               eat more fiber and exercise regularly. Remember to keep this concise.
 
             This is being fed to 11 Labs, which is a text to speech so it is reading everything verbatim.
             Respond in a clear and concise manner and include only text; there should be no numbers or
