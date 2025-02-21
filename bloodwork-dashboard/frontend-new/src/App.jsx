@@ -7,12 +7,12 @@ function App() {
   return (
     <BrowserRouter>
       <div>
-        <nav className="bg-blue-600 p-4">
+        <nav className="bg-blue-800 p-4">
           <div className="container mx-auto flex items-center justify-between">
             <h1 className="text-white text-xl font-bold">Blood Work Dashboard</h1>
             <div className="space-x-4">
-              <Link to="/" className="text-white hover:text-blue-200">All Results</Link>
-              <Link to="/concerns" className="text-white hover:text-blue-200">Primary Concerns</Link>
+              <Link to="/" className="text-white hover:text-blue-100">All Results</Link>
+              <Link to="/concerns" className="text-white hover:text-blue-100">Primary Concerns</Link>
             </div>
           </div>
         </nav>
