@@ -7,7 +7,7 @@ function VoiceButton({ metricId }) {
   const handleVoiceExplanation = async () => {
     try {
       setIsPlaying(true);
-      const response = await fetch(`http://localhost:8000/bloodwork/generate-voice/${metricId}`, {
+      const response = await fetch(`http://localhost:8000/generate-voice/${metricId}`, {
         method: 'POST'
       });
       
