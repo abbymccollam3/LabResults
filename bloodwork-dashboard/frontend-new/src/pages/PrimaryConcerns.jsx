@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { SpeakerWaveIcon } from '@heroicons/react/24/solid';
+import React, { useState, useEffect, useRef } from 'react';
+import { SpeakerWaveIcon, PauseIcon } from '@heroicons/react/24/solid';
 
 function PrimaryConcerns() {
   const [concerns, setConcerns] = useState([]);  // State to hold fetched concerns
   const [loading, setLoading] = useState(true);  // For handling loading state
+  const [playingAudio, setPlayingAudio] = useState(null);
+  const audioRef = useRef(null);
 
   useEffect(() => {
     fetch("http://127.0.0.1:8000/bloodwork/primary-concerns") // Fetch pre-generated data
@@ -36,14 +38,33 @@ function PrimaryConcerns() {
 
   const playAudio = (audioUrl) => {
     if (!audioUrl) {
-      console.warn("No audio available."); // Prevent errors if URL is missing
+      console.warn("No audio available.");
       return;
     }
-  
-    const audio = new Audio(audioUrl);
-    audio.play()
-      .catch((err) => console.error("Audio play error:", err)); // Handle playback errors
+
+    if (audioRef.current && playingAudio === audioUrl) {
+      // Pause current audio without resetting position
+      audioRef.current.pause();
+      setPlayingAudio(null);
+    } else {
+      // Stop previous audio if any
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      // Play new audio
+      const audio = new Audio(audioUrl);
+      // If it's the same audio URL, maintain the previous position
+      if (audioRef.current && audioRef.current.src === audioUrl) {
+        audio.currentTime = audioRef.current.currentTime;
+      }
+      audio.play()
+        .catch((err) => console.error("Audio play error:", err));
+      audio.onended = () => setPlayingAudio(null);
+      audioRef.current = audio;
+      setPlayingAudio(audioUrl);
+    }
   };
+  
 
   const highlightStatus = (status) => {
     // Highlight "high" and "low" statuses in red
@@ -83,16 +104,23 @@ function PrimaryConcerns() {
               </div>
               <div className="space-y-1 text-sm text-gray-600">
                 <p><span className="font-semibold">Normal Range:</span> {concern.normalRange} {concern.unit}</p>
-                <p><span className="font-semibold">Risk:</span> {concern.risk}</p>
-                <p><span className="font-semibold">Recommendation:</span> {concern.recommendation}</p>
+                {/* Removed Risk and Recommendation fields */}
               </div>
               {concern.audio_url && (
                 <button
                   title="Play Audio Explanation"
                   onClick={() => playAudio(concern.audio_url)}
-                  className="absolute bottom-4 right-4 p-2 text-gray-600 hover:text-blue-600 transition-colors"
+                  className={`absolute bottom-1.5 right-4 p-1.5 rounded-full transition-colors ${
+                    playingAudio === concern.audio_url
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-200 text-gray-600 hover:bg-blue-500 hover:text-white'
+                  }`}
                 >
-                  <SpeakerWaveIcon className="h-6 w-6" />
+                  {playingAudio === concern.audio_url ? (
+                    <PauseIcon className="h-6 w-6" />
+                  ) : (
+                    <SpeakerWaveIcon className="h-6 w-6" />
+                  )}
                 </button>
               )}
             </div>

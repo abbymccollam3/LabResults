@@ -63,7 +63,9 @@ async def add_bloodwork(data: List[Dict], background_tasks: BackgroundTasks):  #
 async def get_primary_concerns():
     try:
         # Fetch the metrics data (metric_id, metric_name, unit)
-        metrics_response = supabase_client.table("metrics").select("metric_id, metric_name, unit").execute()
+        metrics_response = supabase_client.table("metrics").select("metric_id, metric_name, unit, normal_range").execute()
+
+        print("Metrics Response:", metrics_response)
 
         if not metrics_response.data:
             raise HTTPException(status_code=404, detail="No metrics found")
@@ -85,7 +87,8 @@ async def get_primary_concerns():
                     "value": bloodwork["value"],
                     "status": bloodwork["status"],
                     "audio_url": bloodwork["audio_url"],
-                    "unit": matching_metric["unit"]
+                    "unit": matching_metric["unit"],
+                    "normalRange": matching_metric["normal_range"]
                 })
         
         return combined_data
