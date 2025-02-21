@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { SpeakerWaveIcon } from '@heroicons/react/24/solid';
 
 function AllResults() {
   const [metrics, setMetrics] = useState([]);
@@ -23,11 +22,6 @@ function AllResults() {
 
     fetchMetrics();
   }, []);
-
-  const handleAudioPlay = (audioUrl) => {
-    const audio = new Audio(audioUrl);
-    audio.play();
-  };
 
   const highlightStatus = (status) => {
     if (status === 'high' || status === 'low') {
@@ -80,15 +74,6 @@ function AllResults() {
                 {highlightStatus(metric.status)}
               </div>
             </div>
-            {metric.audio_url && (
-              <button
-                title="Play Audio Explanation"
-                onClick={() => handleAudioPlay(metric.audio_url)}
-                className="absolute bottom-1.5 right-4 p-1.5 bg-gray-200 hover:bg-blue-500 rounded-full text-gray-600 hover:text-white transition-colors"
-              >
-                <SpeakerWaveIcon className="h-6 w-6" />
-              </button>
-            )}
           </div>
         ))}
       </div>
